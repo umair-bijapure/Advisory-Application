@@ -1,0 +1,19 @@
+{
+    "icons": [
+      {
+        "icon": {
+          "paths": ["path-to-the-icon"], 
+          "attrs": {},
+          "isMulticolor": false
+        },
+        "properties": {
+          "name": "medical", 
+          "code": 123456 
+        },
+        "setIdx": 0,
+        "iconIdx": 0
+      }
+      
+    ]
+  }
+  
