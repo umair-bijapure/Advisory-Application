@@ -1,142 +1,75 @@
-import React, { useState } from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text } from 'react-native';
+import { accelerometer, gyroscope, setUpdateIntervalForType, SensorTypes } from 'react-native-sensors';
+import { useWebSocket } from './useWebSocket'; // Custom hook to handle WebSocket connection
 
-const API_URL = 'http://10.40.10.11:8080/employee/save';
-function App(): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  const [name, setName] = useState('');
-  const [location, setLocation] = useState('');
-  const [branch, setBranch] = useState('');
+export default function App() {
+  const [accelerometerData, setAccelerometerData] = useState({ x: 0, y: 0, z: 0 });
+  const [gyroscopeData, setGyroscopeData] = useState({ x: 0, y: 0, z: 0 });
 
-  const handleSubmit = async () => {
-    try {
-      const data = {
-        name,
-        location,
-        branch,
-      };
-      console.log("control is coming over here")
+  useEffect(() => {
+    // Set the update interval for the accelerometer
+    setUpdateIntervalForType(SensorTypes.accelerometer, 10);
 
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-type': 'application/json'
-        },
-        body: JSON.stringify(data),
-      });
-      console.log("Hereerrr")
-      if (response.ok) {
-        console.log('Response:', response.json());
-        Alert.alert('Success', 'Data submitted successfully');
-      } else {
-        console.error('Failed to submit data');
-        Alert.alert('Error', 'Failed to submit data');
+    // Subscribe to the accelerometer data stream
+    const accelerometerSubscription = accelerometer.subscribe(
+      data => {
+        setAccelerometerData(data);
+        // Send accelerometer data to the backend through WebSocket
+        sendDataToBackend('accelerometer', data);
+      },
+      error => {
+        console.error('Error reading accelerometer data:', error);
       }
-    } catch (error) {
-      console.error('Error:', error);
-      Alert.alert('Error', 'Failed to submit data');
-    }
-  };
+    );
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? 'black' : 'white',
-  };
+    return () => {
+      // Unsubscribe from the accelerometer data stream when the component is unmounted
+      accelerometerSubscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    // Set the update interval for the gyroscope
+    setUpdateIntervalForType(SensorTypes.gyroscope, 20);
+
+    // Subscribe to the gyroscope data stream
+    const gyroscopeSubscription = gyroscope.subscribe(
+      data => {
+        setGyroscopeData(data);
+        // Send gyroscope data to the backend through WebSocket
+        sendDataToBackend('gyroscope', data);
+      },
+      error => {
+        console.error('Error reading gyroscope data:', error);
+      }
+    );
+
+    return () => {
+      // Unsubscribe from the gyroscope data stream when the component is unmounted
+      gyroscopeSubscription.unsubscribe();
+    };
+  }, []);
+
+  const sendDataToBackend = useWebSocket(); // Custom hook to handle WebSocket connection
+
+  const { x: accelerometerX, y: accelerometerY, z: accelerometerZ } = accelerometerData;
+  const { x: gyroscopeX, y: gyroscopeY, z: gyroscopeZ } = gyroscopeData;
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}
-      >
-        <View style={{ padding: 16 }}>
-          <Text style={styles.sectionTitle}>Employee Information</Text>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your name"
-              value={name}
-              onChangeText={(text) => setName(text)}
-            />
-          </View>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Location</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your location"
-              value={location}
-              onChangeText={(text) => setLocation(text)}
-            />
-          </View>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Branch</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your branch"
-              value={branch}
-              onChangeText={(text) => setBranch(text)}
-            />
-          </View>
-          <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-            <Text style={styles.buttonText}>Submit</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    <View>
+      <Text>Accelerometer Data: (in Gs where 1 G = 9.81 m/s^2)</Text>
+      <Text>
+        Accelerometer X: {round(accelerometerX)} Accelerometer Y: {round(accelerometerY)} Accelerometer Z: {round(accelerometerZ)}
+      </Text>
+      <Text>Gyroscope Data: (in rad/s)</Text>
+      <Text>
+        Gyroscope XX: {round(gyroscopeX)} Gyroscope Yy: {round(gyroscopeY)} Gyroscope Z: {round(gyroscopeZ)}
+      </Text>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginVertical: 16,
-  },
-  inputContainer: {
-    marginVertical: 8,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: 'gray',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: 'blue',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-});
-
-export default App;
+function round(value: number) {
+  return Math.round(value * 100) / 100;
+}
